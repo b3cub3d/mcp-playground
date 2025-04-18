@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import os
 import json
+import httpx
 from openai import OpenAI
 from dotenv import load_dotenv
 from datetime import datetime
@@ -91,6 +92,60 @@ def calculate_mortgage(principal, interest_rate, years):
     print(f"[TOOL] calculate_mortgage result: {result}")
     return result
 
+# MCP Time Tool functions
+def get_current_time(timezone=None):
+    """Get the current time in a specific timezone or the system timezone."""
+    print(f"[TOOL] get_current_time executed with timezone: {timezone if timezone else 'system default'}")
+    
+    try:
+        payload = {
+            "name": "get_current_time",
+            "arguments": {}
+        }
+        
+        if timezone:
+            payload["arguments"]["timezone"] = timezone
+        
+        response = httpx.post(f"{MCP_TIME_SERVER_URL}/tool", json=payload, timeout=10.0)
+        response.raise_for_status()
+        result = response.json()
+        
+        formatted_result = f"Current time in {result['timezone']}: {result['datetime']} (DST active: {result['is_dst']})"
+        print(f"[TOOL] get_current_time result: {formatted_result}")
+        return formatted_result
+        
+    except Exception as e:
+        error_msg = f"Error getting current time: {str(e)}"
+        print(f"[TOOL] get_current_time error: {error_msg}")
+        return error_msg
+
+def convert_time(source_timezone, time, target_timezone):
+    """Convert time between timezones."""
+    print(f"[TOOL] convert_time executed with args: source={source_timezone}, time={time}, target={target_timezone}")
+    
+    try:
+        payload = {
+            "name": "convert_time",
+            "arguments": {
+                "source_timezone": source_timezone,
+                "time": time,
+                "target_timezone": target_timezone
+            }
+        }
+        
+        response = httpx.post(f"{MCP_TIME_SERVER_URL}/tool", json=payload, timeout=10.0)
+        response.raise_for_status()
+        result = response.json()
+        
+        formatted_result = f"Time conversion: {time} in {source_timezone} is equivalent to {result['target']['datetime']} in {target_timezone} (Time difference: {result['time_difference']})"
+        print(f"[TOOL] convert_time result: {formatted_result}")
+        return formatted_result
+        
+    except Exception as e:
+        error_msg = f"Error converting time: {str(e)}"
+        print(f"[TOOL] convert_time error: {error_msg}")
+        return error_msg
+
 # MCP Tool registry
 tools = [
     {
@@ -165,6 +220,36 @@ tools = [
                 "required": ["principal", "interest_rate", "years"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_time",
+            "description": "Get the current time in a specific timezone using the MCP time server",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "timezone": {"type": "string", "description": "IANA timezone name (e.g., 'America/New_York', 'Europe/London'). If not provided, system timezone will be used."}
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "convert_time",
+            "description": "Convert time between timezones using the MCP time server",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "source_timezone": {"type": "string", "description": "Source IANA timezone name (e.g., 'America/New_York')"},
+                    "time": {"type": "string", "description": "Time in 24-hour format (HH:MM)"},
+                    "target_timezone": {"type": "string", "description": "Target IANA timezone name (e.g., 'Europe/London')"}
+                },
+                "required": ["source_timezone", "time", "target_timezone"]
+            }
+        }
     }
 ]
 
@@ -181,6 +266,10 @@ def execute_tool(tool_name, tool_args):
         result = search_web(**tool_args)
     elif tool_name == "calculate_mortgage":
         result = calculate_mortgage(**tool_args)
+    elif tool_name == "get_current_time":
+        result = get_current_time(**tool_args)
+    elif tool_name == "convert_time":
+        result = convert_time(**tool_args)
     else:
         result = f"Unknown tool: {tool_name}"
         print(f"[DISPATCHER] {result}")
@@ -212,6 +301,8 @@ Available tools:
 - get_stock_price: To check current stock prices
 - search_web: To find information on the web
 - calculate_mortgage: To calculate monthly mortgage payments
+- get_current_time: Get current time in a specific timezone
+- convert_time: Convert time between timezones
 
 Be conversational but concise. Prioritize accuracy and relevance in your responses."""},
         {"role": "user", "content": message}
