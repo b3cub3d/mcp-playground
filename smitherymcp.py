@@ -22,4 +22,7 @@ async def main():
             print(f"Available tools: {', '.join([t.name for t in tools_result.tools])}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(asyncio.wait_for(main(), timeout=30))  # Add a timeout of 30 seconds
+    except asyncio.TimeoutError:
+        print("Operation timed out. The websocket connection may be hanging.")
