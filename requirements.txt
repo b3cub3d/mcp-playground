@@ -4,4 +4,7 @@ python-dotenv==1.0.0
 flask==2.0.1
 werkzeug==2.0.3
 openai==1.74.1
-httpx>=0.24.1 
+httpx>=0.24.1
+smithery>=0.1.0
+websocket-client>=1.8.0
+mcp>=1.6.0
