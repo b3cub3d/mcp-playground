@@ -11,3 +11,4 @@ websocket-client>=1.8.0
 mcp>=1.6.0
 mcp[cli]>=1.9.0
 uvicorn
+starlette>=0.37.2
