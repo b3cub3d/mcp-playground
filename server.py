@@ -1,7 +1,7 @@
 import os
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("hello-world", allowed_hosts=["*"])
+mcp = FastMCP("hello-world")
 
 @mcp.tool()
 def hello(name: str = "World") -> str:
