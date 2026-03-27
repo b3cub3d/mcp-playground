@@ -1,7 +1,15 @@
 import os
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
-mcp = FastMCP("hello-world")
+# Heroku sits behind a reverse proxy and sets Host to "<app>.herokuapp.com".
+# The MCP Python SDK enables DNS-rebinding protection in some configurations,
+# which can reject Heroku's Host header with HTTP 421. For this demo server,
+# disable it so remote clients can connect.
+mcp = FastMCP(
+    "hello-world",
+    transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+)
 
 @mcp.tool()
 def hello(name: str = "World") -> str:
@@ -14,23 +22,3 @@ def add(a: int, b: int) -> int:
     return a + b
 
 app = mcp.streamable_http_app()
-
-# Heroku (and most reverse proxies) send a real Host header like
-# "<app>.herokuapp.com". The MCP Python SDK's streamable-http transport applies
-# host validation; allow Heroku + local dev explicitly.
-try:
-    from starlette.middleware.trustedhost import TrustedHostMiddleware
-
-    app.add_middleware(
-        TrustedHostMiddleware,
-        allowed_hosts=[
-            "localhost",
-            "127.0.0.1",
-            "[::1]",
-            "*.herokuapp.com",
-        ],
-    )
-except Exception:
-    # If the underlying app/middleware isn't available, we fall back to the
-    # default app behavior rather than crashing at import time.
-    pass
